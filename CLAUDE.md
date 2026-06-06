@@ -70,7 +70,9 @@ Nuxt UI v2 + TailwindCSS 提供组件和样式。AG Grid Enterprise 用于文章
 
 复制 `.env.example` 为 `.env`，关键变量：
 - `NUXT_AGGRID_LICENSE` — AG Grid 企业版授权密钥
-- `NITRO_KV_DRIVER` — 存储驱动（本地/Docker 用 `fs`，Cloudflare 用 `cloudflare-kv-binding`）
-- `NITRO_KV_BASE` — KV 数据目录（默认：`.data/kv`）
+- `NITRO_KV_DRIVER` — 存储驱动（本地/Docker 用 `fs`，Cloudflare 用 `cloudflare-kv-binding`，Vercel 留空并通过 `KV_REST_API_URL`/`KV_REST_API_TOKEN` 自动切换为 Redis 驱动）
+- `NITRO_KV_BASE` — KV 数据目录（默认：`.data/kv`，仅 `fs` 驱动使用）
+- `KV_REST_API_URL` / `KV_REST_API_TOKEN` — Vercel KV / Upstash Redis 凭据，部署到 Vercel 时必填
+- `SELF_HOSTED_AUTH_KEY` — 单用户自部署时使用的固定 auth-key（留空则用默认值 `self-hosted`）
 - `NUXT_DEBUG_MP_REQUEST` — 开启微信代理请求调试（仅开发环境）
 - `DEBUG_KEY` — 调试端点认证密钥

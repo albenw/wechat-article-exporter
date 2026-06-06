@@ -72,7 +72,7 @@ export async function proxyMpRequest(options: RequestOptions) {
   else if (options.action === 'login') {
     // 提取出 token 和 cookies
     try {
-      const authKey = crypto.randomUUID().replace(/-/g, '');
+      const authKey = process.env.SELF_HOSTED_AUTH_KEY || 'self-hosted';
 
       const body = await mpResponse.clone().json();
       const redirectUrl = body?.redirect_url;
