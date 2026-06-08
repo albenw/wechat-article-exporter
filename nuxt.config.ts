@@ -40,10 +40,18 @@ export default defineNuxtConfig({
       external: ['puppeteer'],
     },
     storage: {
-      kv: {
-        driver: process.env.NITRO_KV_DRIVER || 'memory',
-        base: process.env.NITRO_KV_BASE,
-      },
+      kv: process.env.KV_REST_API_URL
+        ? {
+            // Vercel KV / Upstash Redis (https://unstorage.unjs.io/drivers/upstash)
+            driver: 'upstash',
+            url: process.env.KV_REST_API_URL,
+            token: process.env.KV_REST_API_TOKEN,
+          }
+        : {
+            // 本地 / Docker / 其他平台
+            driver: process.env.NITRO_KV_DRIVER || 'memory',
+            base: process.env.NITRO_KV_BASE,
+          },
     },
   },
   monacoEditor: {
@@ -73,3 +81,5 @@ export default defineNuxtConfig({
     logErrors: true,
   },
 });
+
+
