@@ -7,6 +7,9 @@ export default defineNuxtConfig({
   modules: ['@vueuse/nuxt', '@nuxt/ui', 'nuxt-monaco-editor', '@sentry/nuxt/module', 'nuxt-umami'],
   ssr: false,
   runtimeConfig: {
+    // 仅在服务端使用，绝不能放入 public 配置。
+    accessPassword: process.env.APP_ACCESS_PASSWORD,
+    accessSecret: process.env.APP_ACCESS_SECRET,
     public: {
       aggridLicense: process.env.NUXT_AGGRID_LICENSE,
       sentry: {

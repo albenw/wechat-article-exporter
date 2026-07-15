@@ -1,12 +1,14 @@
 <template>
-  <div :class="isDev ? 'debug-screens' : ''" class="flex flex-col h-screen">
-    <NuxtLayout>
-      <NuxtPage />
-    </NuxtLayout>
+  <AccessGate>
+    <div :class="isDev ? 'debug-screens' : ''" class="flex flex-col h-screen">
+      <NuxtLayout>
+        <NuxtPage />
+      </NuxtLayout>
 
-    <UNotifications />
-    <UModals />
-  </div>
+      <UNotifications />
+      <UModals />
+    </div>
+  </AccessGate>
 </template>
 
 <script setup lang="ts">
