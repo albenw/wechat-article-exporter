@@ -281,7 +281,6 @@ export const apis = [
       },
     ],
     responseSample: {},
-    remark: '此接口不需要 API 密钥',
   },
   {
     name: '查询公众号主体信息 (beta)',
@@ -308,7 +307,6 @@ export const apis = [
       is_verify: 2,
       original_article_count: 262,
     },
-    remark: '此接口不需要 API 密钥',
   },
   {
     name: '查询公众号主体信息 (beta)',
@@ -424,6 +422,5 @@ export const apis = [
         },
       },
     },
-    remark: '此接口不需要 API 密钥',
   },
 ];

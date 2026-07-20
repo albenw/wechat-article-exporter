@@ -6,6 +6,12 @@ import { docsWebSite } from '~/config';
 import { gotoLink } from '~/utils';
 
 const modal = useModal();
+const { user, logout } = useSiteAuth();
+
+async function logoutSite() {
+  await logout();
+  await navigateTo('/');
+}
 
 // CredentialDialog 相关变量
 const credentialsDialogOpen = ref(false);
@@ -111,6 +117,12 @@ const isCredentialActive = computed(() => credentialState.value === 'active');
           name="i-lucide:github"
           class="size-7 text-zinc-400 hover:text-blue-500 cursor-pointer transition-colors"
         />
+      </UTooltip>
+    </li>
+
+    <li v-if="user">
+      <UTooltip :text="`退出 ${user.username}`">
+        <UIcon @click="logoutSite" name="i-lucide:log-out" class="size-7 text-zinc-400 hover:text-rose-500 cursor-pointer transition-colors" />
       </UTooltip>
     </li>
   </ul>

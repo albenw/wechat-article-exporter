@@ -7,7 +7,9 @@ interface NavItem {
   tags?: string[];
 }
 
-const items = ref<NavItem[]>([
+const { user } = useSiteAuth();
+
+const items = computed<NavItem[]>(() => [
   { name: '公众号管理', icon: 'i-lucide:users', href: '/dashboard/account' },
   { name: '文章下载', icon: 'i-lucide:file-down', href: '/dashboard/article' },
   { name: '单篇文章下载', icon: 'i-lucide:file-text', href: '/dashboard/single' },
@@ -15,6 +17,9 @@ const items = ref<NavItem[]>([
   { name: '公共代理', icon: 'i-lucide:globe', href: '/dashboard/proxy' },
   { name: 'API', icon: 'i-lucide:cable', href: '/dashboard/api' },
   { name: '设置', icon: 'i-lucide:settings', href: '/dashboard/settings' },
+  ...(user.value?.role === 'admin'
+    ? [{ name: '账号管理', icon: 'i-lucide:shield-user', href: '/dashboard/users' }]
+    : []),
   // { name: '技术支持 & 赞助', icon: 'i-lucide:heart-handshake', href: '/dashboard/support' },
 ]);
 </script>

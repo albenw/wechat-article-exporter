@@ -1,16 +1,22 @@
-import { hasAccessSession, isAccessProtectionConfigured } from '~/server/utils/access-control';
-
-const ACCESS_ROUTES = new Set(['/api/access/session']);
+import { resolveApiPrincipal, resolveRequestPrincipal } from '~/server/auth/session';
 
 export default defineEventHandler(async event => {
   const pathname = getRequestURL(event).pathname;
-  if (!pathname.startsWith('/api/') || ACCESS_ROUTES.has(pathname)) return;
+  if (!pathname.startsWith('/api/') || pathname.startsWith('/api/auth/') || pathname.startsWith('/api/internal/'))
+    return;
+  if (pathname === '/api/public/v1/authkey') return;
 
-  if (!isAccessProtectionConfigured(event)) {
-    throw createError({ statusCode: 503, statusMessage: '站点访问保护尚未配置' });
+  if (pathname.startsWith('/api/public/')) {
+    const principal = await resolveApiPrincipal(event);
+    if (!principal) throw createError({ statusCode: 401, statusMessage: '需要有效的 X-API-Key' });
+    event.context.principal = principal;
+    return;
   }
 
-  if (!(await hasAccessSession(event))) {
-    throw createError({ statusCode: 401, statusMessage: '需要站点访问授权' });
+  const principal = await resolveRequestPrincipal(event);
+  if (!principal) throw createError({ statusCode: 401, statusMessage: '需要登录' });
+  if (pathname.startsWith('/api/admin/') && principal.user.role !== 'admin') {
+    throw createError({ statusCode: 403, statusMessage: '需要管理员权限' });
   }
+  event.context.principal = principal;
 });

@@ -1,7 +1,6 @@
-import dayjs from 'dayjs';
-import { H3Event, parseCookies } from 'h3';
 import { v4 as uuidv4 } from 'uuid';
 import { isDev, USER_AGENT } from '~/config';
+import { requirePrincipal } from '~/server/auth/session';
 import { RequestOptions } from '~/server/types';
 import { cookieStore, getCookieFromStore } from '~/server/utils/CookieStore';
 import { logRequest, logResponse } from '~/server/utils/logger';
@@ -12,8 +11,6 @@ import { logRequest, logResponse } from '~/server/utils/logger';
  * @param options 请求参数
  */
 export async function proxyMpRequest(options: RequestOptions) {
-  const runtimeConfig = useRuntimeConfig();
-
   const headers = new Headers({
     Referer: 'https://mp.weixin.qq.com/',
     Origin: 'https://mp.weixin.qq.com',
@@ -68,11 +65,10 @@ export async function proxyMpRequest(options: RequestOptions) {
 
   // 处理登录成功请求的 cookie
   // 只有登录请求才会将 Cookie 数据写入 CookieStore
-  // 返回给客户端的一个 auth-key 的 cookie
   else if (options.action === 'login') {
     // 提取出 token 和 cookies
     try {
-      const authKey = process.env.SELF_HOSTED_AUTH_KEY || 'self-hosted';
+      const userId = requirePrincipal(options.event).user.id;
 
       const body = await mpResponse.clone().json();
       const redirectUrl = body?.redirect_url;
@@ -85,18 +81,13 @@ export async function proxyMpRequest(options: RequestOptions) {
         throw new Error(`redirect_url 中未找到 token 参数: ${redirectUrl}`);
       }
 
-      console.log('token', token);
-      const success = await cookieStore.setCookie(authKey, token, mpResponse.headers.getSetCookie());
+      const success = await cookieStore.setCookie(userId, token, mpResponse.headers.getSetCookie());
       if (!success) {
         throw new Error('cookie 写入 KV 存储失败');
       }
-      console.log('cookie 写入成功');
-
       setCookies = [
-        `auth-key=${authKey}; Path=/; Expires=${dayjs().add(4, 'days').toString()}; Secure; HttpOnly`,
-
         // 登录成功后，删除浏览器的 uuid cookie
-        `uuid=EXPIRED; Path=/; Expires=${dayjs().subtract(1, 'days').toString()}; Secure; HttpOnly`,
+        'uuid=EXPIRED; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax',
       ];
     } catch (error) {
       console.error('action(login) failed:', error);
@@ -107,20 +98,6 @@ export async function proxyMpRequest(options: RequestOptions) {
         headers: { 'Content-Type': 'application/json' },
       });
     }
-  }
-
-  // 处理切换公众号的请求
-  else if (options.action === 'switch_account') {
-    const authKey = getAuthKeyFromRequest(options.event);
-    if (authKey) {
-      setCookies = ['switch_account=1'];
-    }
-  }
-
-  // 这里是否需要执行？
-  // 更新 CookieStore 中的 cookie
-  else {
-    // updateCookies(options.event, mpResponse.headers.getSetCookie());
   }
 
   // 构造返回给客户端的响应
@@ -142,20 +119,3 @@ export async function proxyMpRequest(options: RequestOptions) {
     return finalResponse.json();
   }
 }
-
-export function getAuthKeyFromRequest(event: H3Event): string {
-  let authKey = getRequestHeader(event, 'X-Auth-Key');
-  if (!authKey) {
-    const cookies = parseCookies(event);
-    authKey = cookies['auth-key'];
-  }
-
-  return authKey;
-}
-
-// function updateCookies(event: H3Event, cookies: string[]): void {
-//   const authKey = getAuthKeyFromRequest(event);
-//   if (authKey) {
-//     cookieStore.updateCookie(authKey, cookies);
-//   }
-// }

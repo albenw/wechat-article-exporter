@@ -2,8 +2,9 @@
  * 退出登录接口
  */
 
-import { parseCookies } from 'h3';
 import { cookieStore, getTokenFromStore } from '~/server/utils/CookieStore';
+import { requirePrincipal } from '~/server/auth/session';
+import { deleteMpCookie } from '~/server/kv/cookie';
 import { proxyMpRequest } from '~/server/utils/proxy-request';
 
 export default defineEventHandler(async event => {
@@ -23,11 +24,9 @@ export default defineEventHandler(async event => {
     },
   });
 
-  // 登出后清理内存中的 cookie 缓存
-  const authKey = getRequestHeader(event, 'X-Auth-Key') || parseCookies(event)['auth-key'];
-  if (authKey) {
-    cookieStore.removeCookie(authKey);
-  }
+  const userId = requirePrincipal(event).user.id;
+  cookieStore.removeCookie(userId);
+  await deleteMpCookie(userId);
 
   return {
     statusCode: response.status,

@@ -1,28 +1,7 @@
 <script setup lang="ts">
-import { sleep } from '#shared/utils/helpers';
-import { request } from '#shared/utils/request';
 import CodeSegment from '~/components/api/CodeSegment.vue';
-import toastFactory from '~/composables/toast';
-import type { GetAuthKeyResult } from '~/types/types';
 
-const toast = toastFactory();
-
-const loading = ref(false);
-const authKey = ref('');
-async function getAuthKey() {
-  loading.value = true;
-  try {
-    await sleep(1000);
-    const resp = await request<GetAuthKeyResult>(`/api/public/v1/authkey`);
-    if (resp.code === 0) {
-      authKey.value = resp.data;
-    } else {
-      toast.error('获取密钥失败', resp.msg);
-    }
-  } finally {
-    loading.value = false;
-  }
-}
+const exampleKey = 'wae_your_api_key';
 </script>
 
 <template>
@@ -46,37 +25,15 @@ async function getAuthKey() {
 
       <template #description>
         <ol class="list-decimal pl-5 text-base">
-          <!--          <li>-->
-          <!--            <p>-->
-          <!--              由于微信公众号本身的限制，密钥有效期最长为 4 天，且只能通过-->
-          <!--              <span class="text-rose-500 font-medium">微信扫码</span> 获取。-->
-          <!--            </p>-->
-          <!--          </li>-->
           <li>
-            <p>以下所有 <code>API</code> 如无特殊说明，均需要携带密钥进行调用。密钥可通过以下两种方式传输：</p>
-            <p>a. 通过自定义请求头 <code class="text-rose-500 font-medium font-mono">X-Auth-Key</code></p>
-            <p>b. 通过 name 为 <code class="text-rose-500 font-medium font-mono">auth-key</code> 的 Cookie</p>
+            <p>以下所有 <code>API</code> 均需要管理员签发的 API Key，并通过请求头传递：</p>
+            <CodeSegment :code="`X-API-Key: ${exampleKey}`" lang="text" class="max-w-xl mt-2" />
           </li>
           <li>
-            <p>
-              <span
-                >调用 API 的密钥与本网站的登录已集成在一起，也就是说，你在该网站扫码登录之后会自动刷新 API 密钥。</span
-              >
-            </p>
-          </li>
-          <li>
-            <p>
-              <span>由于该密钥与网站用的同一套体系，网站的登录信息失效时，对应的 API 密钥也将失效。</span>
-            </p>
+            <p>API Key 与登录会话、微信公众号扫码会话相互独立。需要微信授权的接口会使用该 Key 所属账号的微信公众号会话。</p>
           </li>
         </ol>
-        <UButton class="mt-3" color="blue" :loading="loading" @click="getAuthKey">
-          查询 API 密钥 (确保当前登录信息有效)
-        </UButton>
-        <div v-if="authKey">
-          <p class="mt-5 mb-2">当前密钥:</p>
-          <CodeSegment :code="authKey" lang="text" class="max-w-xl" />
-        </div>
+        <p class="mt-3 text-sm text-gray-500">请向管理员索取 Key；密钥仅会在管理员生成或轮换时显示一次。</p>
       </template>
     </UAlert>
   </div>

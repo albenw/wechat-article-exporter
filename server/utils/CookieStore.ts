@@ -1,5 +1,6 @@
 import { H3Event, parseCookies } from 'h3';
-import { CookieKVValue, getMpCookie, setMpCookie } from '~/server/kv/cookie';
+import { requirePrincipal } from '~/server/auth/session';
+import { CookieKVValue, getMpCookie, registerMpCookieMemoryCache, setMpCookie } from '~/server/kv/cookie';
 
 // 表示一条 set-cookie 记录的解析结果
 export type CookieEntity = Record<string, string | number>;
@@ -115,26 +116,26 @@ class CookieStore {
   // 内存缓存最大条目数，防止无限增长
   private readonly maxSize: number = 1000;
 
-  async getAccountCookie(authKey: string): Promise<AccountCookie | null> {
+  async getAccountCookie(userId: string): Promise<AccountCookie | null> {
     // 优先从本地内存取
-    let cachedAccountCookie = this.store.get(authKey);
+    let cachedAccountCookie = this.store.get(userId);
 
     if (cachedAccountCookie) {
       // LRU: 访问时将条目移到末尾（最近使用）
-      this.store.delete(authKey);
-      this.store.set(authKey, cachedAccountCookie);
+      this.store.delete(userId);
+      this.store.set(userId, cachedAccountCookie);
       return cachedAccountCookie;
     }
 
     // 如果内存没有，则从 kv 数据库取
-    const cookieValue = await getMpCookie(authKey);
+    const cookieValue = await getMpCookie(userId);
     if (!cookieValue) {
       return null;
     }
 
     cachedAccountCookie = AccountCookie.create(cookieValue.token, cookieValue.cookies);
     this.evictIfNeeded();
-    this.store.set(authKey, cachedAccountCookie);
+    this.store.set(userId, cachedAccountCookie);
 
     return cachedAccountCookie;
   }
@@ -144,8 +145,8 @@ class CookieStore {
    * @param authKey
    * @return 适合作为请求头的Cookie字符串
    */
-  async getCookie(authKey: string): Promise<string | null> {
-    const accountCookie = await this.getAccountCookie(authKey);
+  async getCookie(userId: string): Promise<string | null> {
+    const accountCookie = await this.getAccountCookie(userId);
     if (!accountCookie) {
       return null;
     }
@@ -158,21 +159,21 @@ class CookieStore {
    * @param token
    * @param cookie 原始的 set-cookie 字符串数组
    */
-  async setCookie(authKey: string, token: string, cookie: string[]): Promise<boolean> {
+  async setCookie(userId: string, token: string, cookie: string[]): Promise<boolean> {
     const accountCookie = new AccountCookie(token, cookie);
     // 如果已存在则先删除（保证 LRU 顺序正确）
-    this.store.delete(authKey);
+    this.store.delete(userId);
     this.evictIfNeeded();
-    this.store.set(authKey, accountCookie);
-    return await setMpCookie(authKey, accountCookie.toJSON());
+    this.store.set(userId, accountCookie);
+    return await setMpCookie(userId, accountCookie.toJSON());
   }
 
   /**
    * 移除用户的 cookie（用于登出等场景）
    * @param authKey
    */
-  removeCookie(authKey: string): void {
-    this.store.delete(authKey);
+  removeCookie(userId: string): void {
+    this.store.delete(userId);
   }
 
   /**
@@ -194,8 +195,8 @@ class CookieStore {
    * 检索用户的 token
    * @param authKey
    */
-  async getToken(authKey: string): Promise<string | null> {
-    const accountCookie = await this.getAccountCookie(authKey);
+  async getToken(userId: string): Promise<string | null> {
+    const accountCookie = await this.getAccountCookie(userId);
     if (!accountCookie) {
       return null;
     }
@@ -217,67 +218,26 @@ class CookieStore {
 }
 
 export const cookieStore = new CookieStore();
+registerMpCookieMemoryCache(userId => cookieStore.removeCookie(userId));
 
 /**
  * 从 CookieStore 中获取 cookie 字符串
  *
- * @description 根据请求中的 X-Auth-Key header 或者 auth-key cookie，从 CookieStore 中检索用户登录信息的 cookie，这些 cookie 会透传给微信
+ * @description 根据经过身份验证的站点账号，从 CookieStore 中检索其微信公众号会话。
  * @param event
  */
 export async function getCookieFromStore(event: H3Event): Promise<string | null> {
-  let cookie: string | null = null;
-
-  // 优先根据自定义的 X-Auth-Key 检索
-  let authKey = getRequestHeader(event, 'X-Auth-Key');
-  if (authKey) {
-    cookie = await cookieStore.getCookie(authKey);
-    if (cookie) {
-      return cookie;
-    }
-  }
-
-  // 从 cookie 中的 token 检索
-  const cookies = parseCookies(event);
-  authKey = cookies['auth-key'];
-  if (authKey) {
-    cookie = await cookieStore.getCookie(authKey);
-    if (cookie) {
-      return cookie;
-    }
-  }
-
-  return null;
+  return cookieStore.getCookie(requirePrincipal(event).user.id);
 }
 
 /**
  * 从 CookieStore 中获取公众号的 token
  *
- * @description 根据请求中的 X-Auth-Key header 或者 auth-key cookie，从 CookieStore 中检索用户登录时绑定的 token
+ * @description 根据经过身份验证的站点账号，从 CookieStore 中检索其微信公众号 token。
  * @param event
  */
 export async function getTokenFromStore(event: H3Event): Promise<string | null> {
-  let token: string | null = null;
-
-  // 优先根据自定义的 X-Auth-Key 检索
-  let authKey = getRequestHeader(event, 'X-Auth-Key');
-  if (authKey) {
-    token = await cookieStore.getToken(authKey);
-    if (token) {
-      return token;
-    }
-  }
-
-  // 从 cookie 中的 token 检索
-  const cookies = parseCookies(event);
-  authKey = cookies['auth-key'];
-  if (authKey) {
-    token = await cookieStore.getToken(authKey);
-    if (token) {
-      return token;
-    }
-  }
-
-  return null;
+  return cookieStore.getToken(requirePrincipal(event).user.id);
 }
 
 /**
@@ -288,21 +248,5 @@ export async function getTokenFromStore(event: H3Event): Promise<string | null> 
  */
 export function getCookiesFromRequest(event: H3Event): string {
   const cookies = parseCookies(event);
-  return Object.keys(cookies)
-    .map(key => `${key}=${encodeURIComponent(cookies[key])}`)
-    .join(';');
-}
-
-/**
- * 从 response 中获取指定的 set-cookie 的 value 部分
- * @param name cookie 名
- * @param response
- */
-export function getCookieFromResponse(name: string, response: Response): string | null {
-  const cookies = AccountCookie.parse(response.headers.getSetCookie());
-  const targetCookie = cookies.find(cookie => cookie.name === name);
-  if (targetCookie) {
-    return targetCookie.value as string;
-  }
-  return null;
+  return cookies.uuid ? `uuid=${encodeURIComponent(cookies.uuid)}` : '';
 }

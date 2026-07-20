@@ -12,6 +12,7 @@ const isOpen = ref(false);
 const selectedApi = ref(apis[0]);
 
 const payload: Ref<Record<string, any>> = ref({});
+const apiKey = ref('');
 
 const host = window.location.protocol + '//' + window.location.host;
 
@@ -71,6 +72,9 @@ function submit() {
   resp.value = null;
   fetch(url, {
     method: selectedApi.value.method,
+    headers: {
+      'X-API-Key': apiKey.value,
+    },
   })
     .then(resp => {
       if (resp.headers.get('content-type') === 'application/json') {
@@ -145,6 +149,10 @@ function submit() {
             </USelectMenu>
           </div>
 
+          <UFormGroup label="API Key" required>
+            <UInput v-model="apiKey" type="password" autocomplete="off" placeholder="wae_..." />
+          </UFormGroup>
+
           <div class="space-y-5">
             <div>
               <p class="font-semibold mb-2">请求URL:</p>
@@ -173,7 +181,7 @@ function submit() {
                     :placeholder="p.label + (p.remark ? '，' + p.remark : '')"
                   />
                 </UFormGroup>
-                <UButton type="submit" color="black" class="px-5" :loading="btnLoading">提交</UButton>
+                <UButton type="submit" color="black" class="px-5" :loading="btnLoading" :disabled="!apiKey">提交</UButton>
               </UForm>
             </div>
           </div>

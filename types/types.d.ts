@@ -14,12 +14,6 @@ export interface StartLoginResult {
   base_resp: BaseResp;
 }
 
-export interface GetAuthKeyResult {
-  code: number;
-  data: string;
-  msg: string;
-}
-
 export interface ScanLoginResult {
   base_resp: BaseResp;
   status: number;

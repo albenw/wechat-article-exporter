@@ -1,17 +1,25 @@
 import { type CookieEntity } from '~/server/utils/CookieStore';
 
-export type CookieKVKey = string;
-
 export interface CookieKVValue {
   token: string;
   cookies: CookieEntity[];
 }
 
-export async function setMpCookie(key: CookieKVKey, data: CookieKVValue): Promise<boolean> {
+function getWechatSessionKey(userId: string): string {
+  return `auth:wechat:${userId}`;
+}
+
+let clearMemoryCache: ((userId: string) => void) | undefined;
+
+export function registerMpCookieMemoryCache(clear: (userId: string) => void): void {
+  clearMemoryCache = clear;
+}
+
+export async function setMpCookie(userId: string, data: CookieKVValue): Promise<boolean> {
   const kv = useStorage('kv');
   const ttl = 60 * 60 * 24 * 4; // 4 days
   try {
-    await kv.set<CookieKVValue>(`cookie:${key}`, data, {
+    await kv.set<CookieKVValue>(getWechatSessionKey(userId), data, {
       // unstorage 通用 ttl（upstash / redis 驱动识别）
       ttl,
       // Cloudflare KV 专用（cloudflare-kv-binding 驱动识别）
@@ -25,7 +33,12 @@ export async function setMpCookie(key: CookieKVKey, data: CookieKVValue): Promis
   }
 }
 
-export async function getMpCookie(key: CookieKVKey): Promise<CookieKVValue | null> {
+export async function getMpCookie(userId: string): Promise<CookieKVValue | null> {
   const kv = useStorage('kv');
-  return await kv.get<CookieKVValue>(`cookie:${key}`);
+  return (await kv.get<CookieKVValue>(getWechatSessionKey(userId))) || null;
+}
+
+export async function deleteMpCookie(userId: string): Promise<void> {
+  clearMemoryCache?.(userId);
+  await useStorage('kv').removeItem(getWechatSessionKey(userId));
 }

@@ -1,16 +1,7 @@
-import { request } from '#shared/utils/request';
+import { searchMpAccountByUrl } from '~/server/utils/mp-account';
 
 interface UrlQuery {
   url: string;
 }
 
-export default defineEventHandler(async event => {
-  const { url } = getQuery<UrlQuery>(event);
-
-  return await request('/api/web/mp/searchbyurl?url=' + encodeURIComponent(url), {
-    headers: {
-      'X-Auth-Key': getHeader(event, 'X-Auth-Key')!,
-      Cookie: getHeader(event, 'Cookie')!,
-    },
-  });
-});
+export default defineEventHandler(async event => searchMpAccountByUrl(event, getQuery<UrlQuery>(event).url));

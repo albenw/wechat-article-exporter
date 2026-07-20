@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
-import { request } from '#shared/utils/request';
-import { getCookieFromResponse, getCookiesFromRequest } from '~/server/utils/CookieStore';
+import { getCookiesFromRequest } from '~/server/utils/CookieStore';
+import { getMpProfile } from '~/server/utils/mp-profile';
 import { proxyMpRequest } from '~/server/utils/proxy-request';
 
 export default defineEventHandler(async event => {
@@ -28,22 +28,10 @@ export default defineEventHandler(async event => {
     },
     body: payload,
     cookie: cookie,
-    action: 'login', // 有这个标志就会把微信原始响应中的所有 set-cookie 存储在 CookieStore 中，并返回给客户端一个唯一的cookie: auth-key=xxx
+    action: 'login',
   });
 
-  // 从响应中取出唯一的 set-cookie (即上一步 `action=login` 标志所设置的 auth-key=xxx)
-  const authKey = getCookieFromResponse('auth-key', response);
-  if (!authKey) {
-    return {
-      err: '登录失败，请稍后重试',
-    };
-  }
-
-  const { nick_name, head_img } = await request(`/api/web/mp/info`, {
-    headers: {
-      Cookie: `auth-key=${authKey}`,
-    },
-  });
+  const { nick_name, head_img } = await getMpProfile(event);
   if (!nick_name) {
     return {
       err: '获取公众号昵称失败，请稍后重试',
