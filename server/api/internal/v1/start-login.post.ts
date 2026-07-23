@@ -38,9 +38,10 @@ export default defineEventHandler(async event => {
     action: 'start_login',
   });
 
-  const uuidCookie = response.headers.getSetCookie().find(cookie => cookie.startsWith('uuid='));
-  if (!uuidCookie) throw createError({ statusCode: 502, statusMessage: '微信登录会话初始化失败' });
-  await saveInternalWechatLogin(sid, { userId: principal.user.id, cookie: uuidCookie.split(';', 1)[0] });
+  // 这里需要从 cookie, 上面的 sid 就是需要传给微信的 uuid 
+  // const uuidCookie = response.headers.getSetCookie().find(cookie => cookie.startsWith('uuid='));
+  // if (!uuidCookie) throw createError({ statusCode: 502, statusMessage: '微信登录会话初始化失败' });
+  await saveInternalWechatLogin(sid, { userId: principal.user.id, cookie: "uuid=" + sid });
 
   // 把当前 host 拼成完整二维码 URL，让 agent 拿 URL 后自行下载 PNG
   const protocol = (getRequestURL(event).protocol || 'https:').replace(':', '');
